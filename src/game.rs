@@ -60,14 +60,17 @@ impl Game {
         
     }
 
+    // FEN string to allow for board state transfer
     pub fn fen(&self) -> String {
         format!("{}", self.board)
     }
 
+    // determine whose turn it is
     pub fn is_white_turn(&self) -> bool {
         self.board.side_to_move() == Color::White
     }
 
+    // send a packet to the player in the game
     pub fn send(&mut self, white:bool, pkt: Packet) {
         if white {
             match &self.p1c {
@@ -82,6 +85,7 @@ impl Game {
         }
     } 
 
+    // join an existing game
     pub fn join(&mut self, p: String) -> Result<(), String> {
         match (&self.p1, &self.p2) {
             (Some(_), Some(_)) => Err("Game is full".to_string()),
@@ -99,10 +103,12 @@ impl Game {
         }
     }
 
+    // get the status of the game
     pub fn status(&self) -> GameStatus {
         self.status.clone()
     }
 
+    // add a move to the board
     pub fn make_move(&mut self, mov: String) -> Result<String, String> {
         match ChessMove::from_san(&self.board, &mov) {
             Ok(m) => {

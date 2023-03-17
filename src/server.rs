@@ -21,6 +21,8 @@ impl Server {
         }
     }
 
+
+    // create chess game, add to database and users, return response packet to send to user
     pub fn create_game(&mut self, user: &String, pc: broadcast::Sender<Packet>, white: bool) -> Packet {
         if self.game_users.contains_key(user) {
             return Packet::error(Err::AlreadyInGame)
@@ -35,6 +37,8 @@ impl Server {
         packet
     }
 
+    // read incoming packet, determine the action, and then send the response packet
+    // back to the original packets tcp stream
     pub async fn process_packet(&mut self, packet: ServerPacket) -> Result<(), (i32, Instant)> {
         let pkt = packet.pkt();
         let user = packet.user();
@@ -59,6 +63,7 @@ impl Server {
         Ok(())
     }
 
+    // get all games from database and return the response packet
     pub fn list_games(&mut self, user: &String) -> Packet {
         info!("{}: list_games", user);
         let mut string = "No games currently.".to_string();
@@ -71,6 +76,8 @@ impl Server {
         Packet::new(Opcode::ListGamesResp, string)
     }
 
+
+    // get users ongoing game and return the string of the game in a packet
     pub fn show_game(&mut self, user: &String) -> Packet {
         info!("{}: show_game", user);
         if self.game_users.contains_key(user) {
@@ -84,6 +91,8 @@ impl Server {
         }
     }
 
+
+    // add user to an existing game and return the string of the game in a packet
     pub fn join_game(&mut self, user:& String, packet: Packet) -> Packet {
         let id = match self.get_game_id(packet) {
             Ok(i) => i,
@@ -109,6 +118,7 @@ impl Server {
         }
     }
 
+    // add a move to the users current game and return the string of the new board state
     pub fn make_move(&mut self, user: &String, packet: Packet) -> Packet {
         match self.game_users.get(user) {
             Some(id) => {
@@ -131,6 +141,7 @@ impl Server {
         }
     }
 
+    // get the id out of the packet to use as game id
     pub fn get_game_id(&mut self, packet: Packet) -> Result<u32, String> {
         let pl = packet.payload();
         if pl.len() != 4 {

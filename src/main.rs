@@ -10,6 +10,9 @@ mod serverpacket;
 
 static LOGGER: Logger = Logger {service: "Server"};
 
+
+// port 8088
+// creates channels for communication, and starts the processor on a single thread, and all connections on separate threads
 #[tokio::main]
 async fn main() {
     Logger::init(&LOGGER).unwrap();
@@ -34,6 +37,9 @@ async fn main() {
     }
 }
 
+
+// each connection runs the cycle of reading packets from stream, sending to processor,
+// reading response packets from processor, and sending back down the tcp stream
 pub async fn run_conn(tcp: TcpStream, addr: SocketAddr, id: i32, tx: Sender<ServerPacket>, krx: oneshot::Receiver<bool>) {
     spawn(async move {
         let (dtx, drx): (broadcast::Sender<Packet>, broadcast::Receiver<Packet>) = broadcast::channel(32);
@@ -51,6 +57,8 @@ pub async fn run_conn(tcp: TcpStream, addr: SocketAddr, id: i32, tx: Sender<Serv
     });
 }
 
+
+// sole processor to process incoming packets and manage keepalive statuses
 pub fn run_processor(mut prx: Receiver<ServerPacket>, mut itx: Receiver<(i32, oneshot::Sender<bool>)>) -> JoinHandle<()> {
     spawn(async move {
         let mut server = Server::new();

@@ -29,6 +29,7 @@ impl Connection {
         }
     }
 
+    // original join packet process to allow connection
     pub async fn join(&mut self) -> Result<String, String> {
         match self.read_packet().await {
             Some(pkt) => {
@@ -42,6 +43,8 @@ impl Connection {
         }
     }
 
+    // sends packets from the processor back to the tcp stream
+    // contains kill-switch for keepalive timeout
     pub async fn send_packets(&mut self, user: &String) {
         if let Ok(b) = self.kill.try_recv() {
             if b {
@@ -55,6 +58,7 @@ impl Connection {
         
     }
 
+    // reads incomming packets and forwards them to the processor with added information
     pub async fn read_packets(&mut self, tx: &Sender<ServerPacket>, addr: SocketAddr, user: &String) {
         match self.read_packet().await {
             Some(pkt) => {
@@ -65,6 +69,7 @@ impl Connection {
         }
     }
 
+    // connection cycle of sending/reading packets on the tcp stream
     pub async fn cycle(&mut self, tx: &Sender<ServerPacket>, addr: SocketAddr, user: &String) {
         self.send_packets(user).await;
         self.read_packets(tx, addr, user).await;
