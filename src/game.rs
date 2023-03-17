@@ -1,12 +1,16 @@
 use std::fmt::Display;
 
-use chess::{Board, ChessMove};
+use chess::{Board, ChessMove, Color};
+use chess_lib::packet::Packet;
+use tokio::sync::broadcast::Sender;
 
 #[derive(Clone, Debug)]
 pub struct Game {
     board: Board,
     p1: Option<String>,
     p2: Option<String>,
+    p1c: Option<Sender<Packet>>,
+    p2c: Option<Sender<Packet>>,
     status: GameStatus
 }
 
@@ -33,24 +37,50 @@ impl Display for GameStatus {
 }
 
 impl Game {
-    pub fn new(p: String, white:bool) -> Self {
+    pub fn new(p: String, pc: Sender<Packet>, white:bool) -> Self {
         if white {
             Game {
                 board: Board::default(),
                 p1: Some(p),
+                p1c: Some(pc),
                 p2: None,
+                p2c: None,
                 status: GameStatus::Open
             }
         } else {
             Game {
                 board: Board::default(),
                 p2: Some(p),
+                p2c: Some(pc),
                 p1: None,
+                p1c: None,
                 status: GameStatus::Open
             }
         }
         
     }
+
+    pub fn fen(&self) -> String {
+        format!("{}", self.board)
+    }
+
+    pub fn is_white_turn(&self) -> bool {
+        self.board.side_to_move() == Color::White
+    }
+
+    pub fn send(&mut self, white:bool, pkt: Packet) {
+        if white {
+            match &self.p1c {
+                Some(v) => {v.send(pkt).unwrap();}
+                None => {}
+            }
+        } else {
+            match &self.p2c {
+                Some(v) => {v.send(pkt).unwrap();}
+                None => {}
+            }
+        }
+    } 
 
     pub fn join(&mut self, p: String) -> Result<(), String> {
         match (&self.p1, &self.p2) {
@@ -73,27 +103,17 @@ impl Game {
         self.status.clone()
     }
 
-    pub fn make_move(&mut self, mov: String) {
+    pub fn make_move(&mut self, mov: String) -> Result<String, String> {
         match ChessMove::from_san(&self.board, &mov) {
-            Ok(m) => self.board.to_owned().make_move(m, &mut self.board),
-            Err(e) => {println!("Error: {}", e)}
+            Ok(m) => {
+                if self.board.legal(m) {
+                    self.board.to_owned().make_move(m, &mut self.board);
+                    Ok(format!("{}", self.board))
+                } else {
+                    Err("Illegal move".to_string())
+                }
+            },
+            Err(e) => Err(e.to_string())
         }
-    }
-
-    pub fn players(&self) -> Vec<String> {
-        let mut ps: Vec<String> = Vec::new();
-        match &self.p1 {
-            Some(p) => {
-                ps.push(p.to_string());
-            }
-            None => {}
-        }
-        match &self.p2 {
-            Some(p) => {
-                ps.push(p.to_string());
-            }
-            None => {}
-        }
-        ps
     }
 }
